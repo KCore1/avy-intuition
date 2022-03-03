@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Avalanche Intuition</title>
+    <style>
+        html,
+        body {
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+    </style>
+    <script src="https://preview.babylonjs.com/babylon.js"></script>
+    <script src="https://preview.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    <script>
+        var canvas = null;
+        var engine = null;
+        /******* Add the create scene function ******/
+        function createScene() {
+            let scene, camera, light;
+
+
+            // Functions
+            function setupScene() {
+                scene = new BABYLON.Scene(engine);
+                scene.clearColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+            };
+            function setupCamera() {
+                camera = new BABYLON.ArcRotateCamera(
+                    "Camera",
+                    -75 / 180 * Math.PI,    // from X to Z
+                    +75 / 180 * Math.PI,    // from Y to X
+                    20,                     // distance
+                    new BABYLON.Vector3(0, 5, 0),   // direction
+                    scene
+                );
+                camera.attachControl(canvas, true);
+            };
+            function setupLights() {
+                light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 0), scene);
+                sun = new BABYLON.PointLight("sun", new BABYLON.Vector3(1, 1, 10), scene);
+            };
+            function mountains() {
+                let groundMaterial = new BABYLON.StandardMaterial("ground", scene);
+                groundMaterial.diffuseColor = new BABYLON.Color3(181/256, 163/256, 130/256);
+                let ground = BABYLON.MeshBuilder.CreateGroundFromHeightMap("stagleap", "heightmaps/stagleap.png", {
+                    width: 2000, height: 2000, subdivisions: 250, maxHeight: 10, minHeight: 2
+                });
+                ground.material = groundMaterial;
+            };
+            function skybox() {
+                var skybox = BABYLON.MeshBuilder.CreateBox("skyBox", { size: 1000.0 }, scene);
+                var skyboxMaterial = new BABYLON.StandardMaterial("skyBox", scene);
+                skyboxMaterial.backFaceCulling = false;
+                skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture("skybox/skybox4", scene);
+                skyboxMaterial.reflectionTexture.coordinatesMode = BABYLON.Texture.SKYBOX_MODE;
+                skyboxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 0);
+                skyboxMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
+                skybox.material = skyboxMaterial;
+            };
+            
+            setupScene();
+            setupCamera();
+            setupLights();
+            mountains();
+            skybox();
+            
+
+            return scene;
+        };
+        /******* End of the create scene function ******/
+        function init() {
+            canvas = document.getElementById("renderCanvas");
+            engine = new BABYLON.Engine(
+                canvas,
+                true,
+                { preserveDrawingBuffer: true, stencil: true, disableWebGL2Support: false }
+            );
+            let scene = createScene();
+            // Register a render loop to repeatedly render the scene
+            engine.runRenderLoop(function () {
+                scene.render();
+            });
+            // Watch for browser/canvas resize events
+            window.addEventListener("resize", function () {
+                engine.resize();
+            });
+        }
+    </script>
+</head>
+
+<body onload="init()">
+    <canvas id="renderCanvas"></canvas>
+</body>
+
+</html>
