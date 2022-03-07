@@ -22,12 +22,13 @@
     </style>
     <script src="https://preview.babylonjs.com/babylon.js"></script>
     <script src="https://preview.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    <script src="https://preview.babylonjs.com/gui/babylon.gui.min.js"></script>
     <script>
         var canvas = null;
         var engine = null;
         /******* Add the create scene function ******/
         function createScene() {
-            let scene, camera, light, ground, playerMesh, beaconNumbers;
+            let scene, camera, light, ground, playerMesh, beaconNumbers, advancedTexture;
 
             // Functions
 
@@ -67,7 +68,7 @@
                 camera.keysDown = [83]; // S
                 camera.keysLeft = [65]; // A
                 camera.keysRight = [68]; // D
-                camera.speed = 1;
+                camera.speed = 3;
                 camera.attachControl(canvas, true);
                 camera._needMoveForGravity = true;
                 camera.ellipsoid = new BABYLON.Vector3(0.05, 1, 0.05);
@@ -79,10 +80,10 @@
             };
 
             function setupGUI() {
-                var advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+                advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
 
                 beaconNumbers = new BABYLON.GUI.TextBlock();
-                beaconNumbers.text = 1.2;
+                beaconNumbers.text = "1.2";
                 beaconNumbers.color = "white";
                 beaconNumbers.fontSize = 40;
                 advancedTexture.addControl(beaconNumbers);
@@ -114,6 +115,7 @@
             setupScene();
             setupCamera();
             setupLights();
+            setupGUI();
             mountains();
             skybox();
 
