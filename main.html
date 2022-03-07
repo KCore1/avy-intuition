@@ -27,7 +27,7 @@
         var engine = null;
         /******* Add the create scene function ******/
         function createScene() {
-            let scene, camera, light, ground, playerMesh;
+            let scene, camera, light, ground, playerMesh, beaconNumbers;
 
             // Functions
 
@@ -77,6 +77,16 @@
                 light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 0), scene);
                 sun = new BABYLON.PointLight("sun", new BABYLON.Vector3(1, 1, 10), scene);
             };
+
+            function setupGUI() {
+                var advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+
+                beaconNumbers = new BABYLON.GUI.TextBlock();
+                beaconNumbers.text = 1.2;
+                beaconNumbers.color = "white";
+                beaconNumbers.fontSize = 40;
+                advancedTexture.addControl(beaconNumbers);
+            }
 
             // Object functions
 
