@@ -12,12 +12,19 @@
             height: 100%;
             margin: 0;
             padding: 0;
+            font-family: 'Digital';
         }
 
         #renderCanvas {
             width: 100%;
             height: 100%;
             touch-action: none;
+        }
+
+        @font-face {
+            font-family: 'Digital';
+            src: url('./fonts/DS-DIGI.TTF') format('truetype');
+            /* font from https://www.dafont.com/ds-digital.font */
         }
     </style>
     <script src="https://preview.babylonjs.com/babylon.js"></script>
@@ -63,6 +70,7 @@
                     new BABYLON.Vector3(-50, 500, 0),   // position
                     scene
                 );
+                camera.fov = 1.2;
                 camera.inertia = 0;
                 camera.keysUp = [87]; // W
                 camera.keysDown = [83]; // S
@@ -83,23 +91,32 @@
                 advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
 
                 beaconNumbers = new BABYLON.GUI.TextBlock();
-                beaconNumbers.text = "1.2";
-                beaconNumbers.color = "white";
-                beaconNumbers.fontSize = 40;
+                beaconNumbers.fontFamily = 'Digital';
+                beaconNumbers.fontStyle = 'bold';
+                beaconNumbers.color = "red";
+                beaconNumbers.fontSize = 80;
+                beaconNumbers.left = "-40%";
+                beaconNumbers.top = "-40%";
+                // update the text
+                beaconNumbers.onBeforeDrawObservable.add(function () {
+                    beaconNumbers.text = distance(camera.position.x, camera.position.y, camera.position.z);
+                });
                 advancedTexture.addControl(beaconNumbers);
             }
 
             // Object functions
 
+            // make custom heightmap from contour map of Stagleap Provincial Park
             function mountains() {
                 let groundMaterial = new BABYLON.StandardMaterial("ground", scene);
-                groundMaterial.diffuseColor = new BABYLON.Color3(181 / 256, 163 / 256, 130 / 256);
+                groundMaterial.diffuseColor = new BABYLON.Color3(250 / 256, 250 / 256, 255 / 256);
                 ground = BABYLON.MeshBuilder.CreateGroundFromHeightMap("stagleap", "heightmaps/stagleap.png", {
                     width: 2000, height: 2000, subdivisions: 100, maxHeight: 500, minHeight: 2
                 });
                 ground.material = groundMaterial;
                 ground.checkCollisions = true;
             };
+
             function skybox() {
                 var skybox = BABYLON.MeshBuilder.CreateBox("skyBox", { size: 3000.0 }, scene);
                 var skyboxMaterial = new BABYLON.StandardMaterial("skyBox", scene);
@@ -111,6 +128,14 @@
                 skybox.material = skyboxMaterial;
             };
 
+            // Other functions (calculations, etc.)
+
+            // returns absolute distance given that x y z are numbers
+            function distance(x, y, z) {
+                return Math.round(Math.sqrt(x ** 2 + y ** 2 + z ** 2));
+            }
+
+            // Scene function calls
 
             setupScene();
             setupCamera();
@@ -127,7 +152,7 @@
 
             // scene functions
 
-            
+            // scene.onBeforeRenderObservable.add(setupGUI());
 
             return scene;
         };
