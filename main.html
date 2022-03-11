@@ -87,7 +87,7 @@
                 sun = new BABYLON.PointLight("sun", new BABYLON.Vector3(1, 1, 10), scene);
             };
 
-            function setupGUI(vector = new BABYLON.Vector3(0, 0, 0)) {
+            function setupGUI(vector = new BABYLON.Vector3.Zero()) {
                 advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
                 console.log(vector);
                 beaconNumbers = new BABYLON.GUI.TextBlock();
@@ -167,19 +167,22 @@
                 // should need to travel maximum of 1415 to hit if direction is good, but doing 2000 just in case.
                 let origin = new BABYLON.Vector3(0, 800, 0);
                 var ray = new BABYLON.Ray(origin, direction, 2000);
-                console.log(ray);
                 // var hit = scene.pickWithRay(ray, (mesh) => {
                 //     return (mesh === ground);
                 // });
                 var hit = scene.pickWithRay(ray);
-                victim = hit.pickedPoint;
-                victim.y += 1000
-                console.log(hit);
+                // TESTING
+                victim = BABYLON.MeshBuilder.CreateBox("victim", {size: 2}, scene);
+                victim.position = hit.pickedPoint;
+                victim.checkCollisions = true;
+                let up = new BABYLON.Vector3(0, 100, 0);
+                victim.moveWithCollisions(up);
+                // END TESTING
                 if (victim != null) {
-                    return victim;
+                    return victim.position;
                 } else {
                     return "goofed";
-                }
+                };
             };
 
             // Other functions (calculations, etc.)
