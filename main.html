@@ -35,7 +35,7 @@
         var engine = null;
         /******* Add the create scene function ******/
         function createScene() {
-            let scene, camera, light, ground, playerMesh, beaconNumbers, advancedTexture;
+            let scene, camera, light, ground, playerMesh, beaconNumbers, advancedTexture, victim;
 
             // Functions
 
@@ -87,9 +87,9 @@
                 sun = new BABYLON.PointLight("sun", new BABYLON.Vector3(1, 1, 10), scene);
             };
 
-            function setupGUI() {
+            function setupGUI(vector = new BABYLON.Vector3(0, 0, 0)) {
                 advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
-
+                console.log(vector);
                 beaconNumbers = new BABYLON.GUI.TextBlock();
                 beaconNumbers.fontFamily = 'Digital';
                 beaconNumbers.fontStyle = 'bold';
@@ -99,7 +99,10 @@
                 beaconNumbers.top = "-40%";
                 // update the text
                 beaconNumbers.onBeforeDrawObservable.add(function () {
-                    beaconNumbers.text = distance(camera.position.x, camera.position.y, camera.position.z);
+                    let x_pos = camera.position.x - vector.x;
+                    let y_pos = camera.position.y - vector.y;
+                    let z_pos = camera.position.z - vector.z;
+                    beaconNumbers.text = distance(x_pos, y_pos, z_pos);
                 });
                 advancedTexture.addControl(beaconNumbers);
             }
@@ -118,7 +121,7 @@
             };
 
             function skybox() {
-                var skybox = BABYLON.MeshBuilder.CreateBox("skyBox", { size: 3000.0 }, scene);
+                var skybox = BABYLON.MeshBuilder.CreateBox("skyBox", { size: 2000.0 }, scene);
                 var skyboxMaterial = new BABYLON.StandardMaterial("skyBox", scene);
                 skyboxMaterial.backFaceCulling = false;
                 skyboxMaterial.reflectionTexture = new BABYLON.CubeTexture("skybox/skybox4", scene);
@@ -128,21 +131,78 @@
                 skybox.material = skyboxMaterial;
             };
 
+            /*// potential vertical collisions function, currently using thin ellipsoid
+            scene.registerBeforeRender(() => {
+
+                //jump check
+                const delta = scene.getEngine().getDeltaTime();
+                if (velocity.y <= 0) {//create a ray to detect the ground as character is falling
+
+                    const ray = new BABYLON.Ray();
+                    const rayHelper = new BABYLON.RayHelper(ray);
+                    rayHelper.attachToMesh(body, new BABYLON.Vector3(0, -0.995, 0), new BABYLON.Vector3(0, -1, 0), 0.5);
+
+                    const pick = scene.pickWithRay(ray, (mesh) => {
+                        return (mesh === ground || mesh === platform1);
+                    }, true);
+                    if (pick) onObject = pick.hit;
+
+                }
+                velocity.y -= delta / 3000;
+                if (onObject) {
+                    velocity.y = Math.max(0, velocity.y)
+                };
+                if (jumpKeyDown && onObject) {
+                    velocity.y = 0.25;
+                    onObject = false;
+                }
+
+                body.moveWithCollisions(velocity);
+            });*/
+
+            // Making this work first
+            function victimPosition() {
+                // I want this to travel downwards, the more negative y the stronger the downward bias
+                var direction = new BABYLON.Vector3(randomNumber(10, -10), randomNumber(10, -10) - 100, randomNumber(10, -10));
+                // should need to travel maximum of 1415 to hit if direction is good, but doing 2000 just in case.
+                let origin = new BABYLON.Vector3(0, 800, 0);
+                var ray = new BABYLON.Ray(origin, direction, 2000);
+                console.log(ray);
+                // var hit = scene.pickWithRay(ray, (mesh) => {
+                //     return (mesh === ground);
+                // });
+                var hit = scene.pickWithRay(ray);
+                victim = hit.pickedPoint;
+                victim.y += 1000
+                console.log(hit);
+                if (victim != null) {
+                    return victim;
+                } else {
+                    return "goofed";
+                }
+            };
+
             // Other functions (calculations, etc.)
 
             // returns absolute distance given that x y z are numbers
             function distance(x, y, z) {
                 return Math.round(Math.sqrt(x ** 2 + y ** 2 + z ** 2));
-            }
+            };
+
+            // returns a random number between min and max
+            function randomNumber(min, max) {
+                return Math.random() * (max - min) + min;
+            };
 
             // Scene function calls
 
             setupScene();
             setupCamera();
             setupLights();
-            setupGUI();
             mountains();
             skybox();
+            var vector = victimPosition();
+            setupGUI(vector);
 
             // presets
 
