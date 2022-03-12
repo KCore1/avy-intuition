@@ -35,7 +35,7 @@
         var engine = null;
         /******* Add the create scene function ******/
         function createScene() {
-            let scene, camera, light, ground, playerMesh, beaconNumbers, advancedTexture, victim;
+            let scene, camera, light, ground, playerMesh, beaconNumbers, advancedTexture, victim, hit;
 
             // Functions
 
@@ -63,6 +63,7 @@
                 scene = new BABYLON.Scene(engine);
                 scene.clearColor = new BABYLON.Color3(0.2, 0.2, 0.2);
                 scene.gravity = new BABYLON.Vector3(0, -1, 0);
+                scene.collisionsEnabled = true;
             };
             function setupCamera() {
                 camera = new BABYLON.UniversalCamera(
@@ -80,6 +81,8 @@
                 camera.attachControl(canvas, true);
                 camera._needMoveForGravity = true;
                 camera.ellipsoid = new BABYLON.Vector3(0.05, 1, 0.05);
+                camera.applyGravity = true;
+                camera.checkCollisions = true;
             };
 
             function setupLights() {
@@ -89,7 +92,6 @@
 
             function setupGUI(vector = new BABYLON.Vector3.Zero()) {
                 advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
-                console.log(vector);
                 beaconNumbers = new BABYLON.GUI.TextBlock();
                 beaconNumbers.fontFamily = 'Digital';
                 beaconNumbers.fontStyle = 'bold';
@@ -113,6 +115,7 @@
             function mountains() {
                 let groundMaterial = new BABYLON.StandardMaterial("ground", scene);
                 groundMaterial.diffuseColor = new BABYLON.Color3(250 / 256, 250 / 256, 255 / 256);
+                groundMaterial.specularColor = new BABYLON.Color3(0, 0, 0);
                 ground = BABYLON.MeshBuilder.CreateGroundFromHeightMap("stagleap", "heightmaps/stagleap.png", {
                     width: 2000, height: 2000, subdivisions: 100, maxHeight: 500, minHeight: 2
                 });
@@ -162,27 +165,32 @@
 
             // Making this work first
             function victimPosition() {
+                // ground hasn't loaded yet, so wait for a second and then try to pick it.
+                // BABYLON.Tools.DelayAsync(30).then(() => {
                 // I want this to travel downwards, the more negative y the stronger the downward bias
-                var direction = new BABYLON.Vector3(randomNumber(10, -10), randomNumber(10, -10) - 100, randomNumber(10, -10));
+                var direction = new BABYLON.Vector3(randomNumber(10, -10), randomNumber(10, -10) - 50, randomNumber(10, -10));
                 // should need to travel maximum of 1415 to hit if direction is good, but doing 2000 just in case.
                 let origin = new BABYLON.Vector3(0, 800, 0);
                 var ray = new BABYLON.Ray(origin, direction, 2000);
-                // var hit = scene.pickWithRay(ray, (mesh) => {
-                //     return (mesh === ground);
-                // });
-                var hit = scene.pickWithRay(ray);
-                // TESTING
-                victim = BABYLON.MeshBuilder.CreateBox("victim", {size: 2}, scene);
-                victim.position = hit.pickedPoint;
-                victim.checkCollisions = true;
-                let up = new BABYLON.Vector3(0, 100, 0);
-                victim.moveWithCollisions(up);
-                // END TESTING
-                if (victim != null) {
-                    return victim.position;
+                hit = scene.pickWithRay(ray, (mesh) => {
+                    return (mesh === ground);
+                });
+                console.log(hit);
+                if (hit.hit) {
+                    console.log(hit);
+                    console.log(hit.pickedPoint);
+                    return hit.pickedPoint;
                 } else {
                     return "goofed";
                 };
+                // });
+                // TESTING
+                // victim = BABYLON.MeshBuilder.CreateBox("victim", { size: 2 }, scene);
+                // victim.position = hit.pickedPoint;
+                // victim.checkCollisions = true;
+                // let up = new BABYLON.Vector3(0, 2000, 0); // does not seem that ground mesh is collisionable
+                // victim.moveWithCollisions(up);
+                // END TESTING
             };
 
             // Other functions (calculations, etc.)
@@ -204,14 +212,17 @@
             setupLights();
             mountains();
             skybox();
-            var vector = victimPosition();
-            setupGUI(vector);
+            // console.log(victimPosition());
+            // BABYLON.Tools.DelayAsync(40).then(() => {
+            //     setupGUI(victimPosition());
+            // })
+            scene.executeWhenReady(function () {
+                var vector = victimPosition();
+                console.log(vector);
+                setupGUI(vector);
+            });
 
-            // presets
 
-            camera.applyGravity = true;
-            scene.collisionsEnabled = true;
-            camera.checkCollisions = true;
 
             // scene functions
 
