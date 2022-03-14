@@ -35,7 +35,7 @@
         var engine = null;
         /******* Add the create scene function ******/
         function createScene() {
-            let scene, camera, light, ground, advancedTexture;
+            let scene, camera, arcRotateCamera, light, ground, advancedTexture;
             let beaconNumbers, victim, hit, distanceToVictim;
 
             // Functions
@@ -66,7 +66,7 @@
                 scene.gravity = new BABYLON.Vector3(0, -1, 0);
                 scene.collisionsEnabled = true;
             };
-            function setupCamera() {
+            function setupUniversalCamera() {
                 camera = new BABYLON.UniversalCamera(
                     "Camera",
                     new BABYLON.Vector3(-50, 500, 0),   // position
@@ -84,6 +84,18 @@
                 camera.ellipsoid = new BABYLON.Vector3(0.05, 1, 0.05);
                 camera.applyGravity = true;
                 camera.checkCollisions = true;
+                scene.activeCamera = camera;
+            };
+
+            // target must be Vector3
+            function setupArcRotateCamera(target) {
+                arcRotateCamera = new BABYLON.ArcRotateCamera("arcCamera", 0, 0, 30, target, scene);
+                arcRotateCamera.fov = 1.2;
+                camera.detachControl();
+                arcRotateCamera.attachControl(canvas, true);
+                scene.activeCamera = arcRotateCamera;
+                arcRotateCamera.ellipsoid = new BABYLON.Vector3(2, 2, 2);
+                arcRotateCamera.checkCollisions = true;
             };
 
             function setupLights() {
@@ -163,9 +175,7 @@
                 BABYLON.SceneLoader.ImportMesh("", "./models/", "probe.babylon", scene, function (newMeshes) {
 
                     // make new mesh display in front of ground
-                    newMeshes[0].renderingGroupId = 1;
-                    newMeshes[1].renderingGroupId = 2;
-                    newMeshes[2].renderingGroupId = 3;
+                    
 
                     // transforming beacon mesh
                     newMeshes[0].scaling = new BABYLON.Vector3(0.1, 0.1, 0.1);
@@ -196,25 +206,30 @@
                 if (hit.hit) {
                     // console.log(hit); // testing
                     // console.log(hit.pickedPoint); // testing
+                    victim = hit.pickedPoint; // to be able to access victim outside of the function
                     return hit.pickedPoint;
                 } else {
                     return "goofed";
                 };
-                // });
-                // TESTING
-                // victim = BABYLON.MeshBuilder.CreateBox("victim", { size: 2 }, scene);
-                // victim.position = hit.pickedPoint;
-                // victim.checkCollisions = true;
-                // let up = new BABYLON.Vector3(0, 2000, 0); // does not seem that ground mesh is collisionable
-                // victim.moveWithCollisions(up);
-                // END TESTING
             };
 
             // requires distance to victim, transitions to ArcRotate Camera over the victim area
             function cameraTransition() {
                 // need to delay or will transition camera immediately as the ray for victim has not been cast
-                BABYLON.Tools.DelayAsync(100).then(() => {
-                    console.log(closeToVictim(distanceToVictim));
+                BABYLON.Tools.DelayAsync(100).then(() => { // some weird redundancy here with closeToVictim due to loading not all happening
+                    // console.log("here 1"); // testing
+
+                    if (closeToVictim(distanceToVictim)) {
+                        // console.log("here 3"); // testing
+                        // console.log(newMeshes);
+                        advancedTexture.dispose();
+                        // deleting beacon
+                        scene.getMeshByName("Cube")?.dispose();
+                        scene.getMeshByName("Plane")?.dispose();
+                        scene.getMeshByName("Sphere")?.dispose();
+                        distanceToVictim = 100; // cause the onRenderBeforeObservable conditional to stop running.
+                        setupArcRotateCamera(victim);
+                    };
                 });
             };
 
@@ -248,7 +263,7 @@
             // Scene function calls
 
             setupScene();
-            setupCamera();
+            setupUniversalCamera();
             setupLights();
             mountains();
             skybox();
@@ -262,6 +277,7 @@
                 addBeaconFromBlender(); // adding this here so I can attach gui to beacon
                 scene.onBeforeRenderObservable.add(function () {
                     if (closeToVictim(distanceToVictim)) {
+                        console.log("here"); // testing
                         cameraTransition();
                     };
                 });
