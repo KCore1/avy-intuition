@@ -35,7 +35,8 @@
         var engine = null;
         /******* Add the create scene function ******/
         function createScene() {
-            let scene, camera, light, ground, playerMesh, beaconNumbers, advancedTexture, victim, hit;
+            let scene, camera, light, ground, advancedTexture;
+            let beaconNumbers, victim, hit, distanceToVictim;
 
             // Functions
 
@@ -96,15 +97,16 @@
                 beaconNumbers.fontFamily = 'Digital';
                 beaconNumbers.fontStyle = 'bold';
                 beaconNumbers.color = "red";
-                beaconNumbers.fontSize = 80;
-                beaconNumbers.left = "-40%";
-                beaconNumbers.top = "-40%";
+                beaconNumbers.fontSize = 100;
+                // beaconNumbers.left = "-40%";
+                // beaconNumbers.top = "-40%";
                 // update the text
                 beaconNumbers.onBeforeDrawObservable.add(function () {
                     let x_pos = camera.position.x - vector.x;
                     let y_pos = camera.position.y - vector.y;
                     let z_pos = camera.position.z - vector.z;
-                    beaconNumbers.text = distance(x_pos, y_pos, z_pos);
+                    distanceToVictim = distance(x_pos, y_pos, z_pos)
+                    beaconNumbers.text = distanceToVictim;
                 });
                 advancedTexture.addControl(beaconNumbers);
             }
@@ -134,51 +136,66 @@
                 skybox.material = skyboxMaterial;
             };
 
-            /*// potential vertical collisions function, currently using thin ellipsoid
-            scene.registerBeforeRender(() => {
+            function addBeaconFromBlender() {
+                BABYLON.SceneLoader.ImportMesh("", "./models/", "beacon.babylon", scene, function (newMeshes) {
 
-                //jump check
-                const delta = scene.getEngine().getDeltaTime();
-                if (velocity.y <= 0) {//create a ray to detect the ground as character is falling
+                    // make new mesh display in front of ground
+                    newMeshes[0].renderingGroupId = 1;
+                    newMeshes[1].renderingGroupId = 2;
+                    newMeshes[2].renderingGroupId = 3;
 
-                    const ray = new BABYLON.Ray();
-                    const rayHelper = new BABYLON.RayHelper(ray);
-                    rayHelper.attachToMesh(body, new BABYLON.Vector3(0, -0.995, 0), new BABYLON.Vector3(0, -1, 0), 0.5);
+                    // transforming beacon mesh
+                    newMeshes[0].scaling = new BABYLON.Vector3(0.1, 0.1, 0.1);
+                    newMeshes[0].parent = camera;
+                    // console.log(newMeshes); // testing
+                    newMeshes[0].rotation.z = Math.PI / 2
+                    newMeshes[0].rotation.y = -Math.PI / 2;
+                    newMeshes[0].position.x = -0.5;
+                    newMeshes[0].position.y = -0.5;
+                    newMeshes[0].position.z = 1.5;
+                    // requires beaconNumbers to be defined
+                    beaconNumbers.linkWithMesh(newMeshes[1]);
 
-                    const pick = scene.pickWithRay(ray, (mesh) => {
-                        return (mesh === ground || mesh === platform1);
-                    }, true);
-                    if (pick) onObject = pick.hit;
+                });
+            };
 
-                }
-                velocity.y -= delta / 3000;
-                if (onObject) {
-                    velocity.y = Math.max(0, velocity.y)
-                };
-                if (jumpKeyDown && onObject) {
-                    velocity.y = 0.25;
-                    onObject = false;
-                }
+            function addProbeFromBlender() {
+                BABYLON.SceneLoader.ImportMesh("", "./models/", "probe.babylon", scene, function (newMeshes) {
 
-                body.moveWithCollisions(velocity);
-            });*/
+                    // make new mesh display in front of ground
+                    newMeshes[0].renderingGroupId = 1;
+                    newMeshes[1].renderingGroupId = 2;
+                    newMeshes[2].renderingGroupId = 3;
 
-            // Making this work first
+                    // transforming beacon mesh
+                    newMeshes[0].scaling = new BABYLON.Vector3(0.1, 0.1, 0.1);
+                    newMeshes[0].parent = camera;
+                    // console.log(newMeshes); // testing
+                    newMeshes[0].rotation.z = Math.PI / 2
+                    newMeshes[0].rotation.y = -Math.PI / 2;
+                    newMeshes[0].position.x = -0.5;
+                    newMeshes[0].position.y = -0.5;
+                    newMeshes[0].position.z = 1.5;
+                    // requires beaconNumbers to be defined
+                    beaconNumbers.linkWithMesh(newMeshes[1]);
+
+                });
+            }
+
+            // Determine location of victim
             function victimPosition() {
-                // ground hasn't loaded yet, so wait for a second and then try to pick it.
-                // BABYLON.Tools.DelayAsync(30).then(() => {
                 // I want this to travel downwards, the more negative y the stronger the downward bias
                 var direction = new BABYLON.Vector3(randomNumber(10, -10), randomNumber(10, -10) - 50, randomNumber(10, -10));
+                let origin = new BABYLON.Vector3(200, 800, 200); // place origin over basin
                 // should need to travel maximum of 1415 to hit if direction is good, but doing 2000 just in case.
-                let origin = new BABYLON.Vector3(0, 800, 0);
                 var ray = new BABYLON.Ray(origin, direction, 2000);
                 hit = scene.pickWithRay(ray, (mesh) => {
                     return (mesh === ground);
                 });
-                console.log(hit);
+                // console.log(hit); // testing
                 if (hit.hit) {
-                    console.log(hit);
-                    console.log(hit.pickedPoint);
+                    // console.log(hit); // testing
+                    // console.log(hit.pickedPoint); // testing
                     return hit.pickedPoint;
                 } else {
                     return "goofed";
@@ -193,6 +210,19 @@
                 // END TESTING
             };
 
+            // requires distance to victim, transitions to ArcRotate Camera over the victim area
+            function cameraTransition() {
+                // need to delay or will transition camera immediately as the ray for victim has not been cast
+                BABYLON.Tools.DelayAsync(100).then(() => {
+                    console.log(closeToVictim(distanceToVictim));
+                });
+            };
+
+            // generate a random invisible box near victimPosition for probing
+            function makeVictimMesh() {
+
+            };
+
             // Other functions (calculations, etc.)
 
             // returns absolute distance given that x y z are numbers
@@ -205,6 +235,16 @@
                 return Math.random() * (max - min) + min;
             };
 
+            // returns true if near enough to victim to trigger camera switch
+            function closeToVictim(distance) {
+                // guessing ten testing
+                if (distance > 10) {
+                    return false;
+                } else {
+                    return true;
+                }
+            }
+
             // Scene function calls
 
             setupScene();
@@ -212,21 +252,22 @@
             setupLights();
             mountains();
             skybox();
-            // console.log(victimPosition());
-            // BABYLON.Tools.DelayAsync(40).then(() => {
-            //     setupGUI(victimPosition());
-            // })
-            scene.executeWhenReady(function () {
-                var vector = victimPosition();
-                console.log(vector);
-                setupGUI(vector);
-            });
-
-
 
             // scene functions
 
-            // scene.onBeforeRenderObservable.add(setupGUI());
+            scene.executeWhenReady(function () {
+                var vector = victimPosition();
+                // console.log(vector); // testing
+                setupGUI(vector);
+                addBeaconFromBlender(); // adding this here so I can attach gui to beacon
+                scene.onBeforeRenderObservable.add(function () {
+                    if (closeToVictim(distanceToVictim)) {
+                        cameraTransition();
+                    };
+                });
+            });
+
+
 
             return scene;
         };
