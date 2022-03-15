@@ -35,30 +35,12 @@
         var engine = null;
         /******* Add the create scene function ******/
         function createScene() {
-            let scene, camera, arcRotateCamera, light, ground, advancedTexture;
-            let beaconNumbers, victim, hit, distanceToVictim;
+            let scene, camera, arcRotateCamera, light, ground, advancedTexture, clicked;
+            let beaconNumbers, victim, hit, distanceToVictim, noisyTarget, victimMesh;
 
             // Functions
 
             // Setup functions
-
-            canvas.onclick = function () {
-                canvas.requestPointerLock();
-            }
-
-            document.addEventListener('pointerlockchange', lockChangeLog, false);
-
-            function lockChangeLog() {
-                if (document.pointerLockElement === canvas) {
-                    document.addEventListener("mousemove", mousemoveCallback, false);
-                } else {
-                    document.removeEventListener("mousemove", mousemoveCallback, false);
-                }
-            }
-
-            function mousemoveCallback(event) {
-                var demo = requestAnimationFrame(mousemoveCallback);
-            }
 
             function setupScene() {
                 scene = new BABYLON.Scene(engine);
@@ -89,8 +71,11 @@
 
             // target must be Vector3
             function setupArcRotateCamera(target) {
-                arcRotateCamera = new BABYLON.ArcRotateCamera("arcCamera", 0, 0, 30, target, scene);
+                // make smooth transition
+                noisyTarget = new BABYLON.Vector3(target.x + randomNumber(-5, 5), target.y + randomNumber(-5, 5), target.z);
+                arcRotateCamera = new BABYLON.ArcRotateCamera("arcCamera", 0, 0, 20, noisyTarget, scene);
                 arcRotateCamera.fov = 1.2;
+                arcRotateCamera.upperBetaLimit = (Math.PI / 2) * 0.99;
                 camera.detachControl();
                 arcRotateCamera.attachControl(canvas, true);
                 scene.activeCamera = arcRotateCamera;
@@ -121,7 +106,7 @@
                     beaconNumbers.text = distanceToVictim;
                 });
                 advancedTexture.addControl(beaconNumbers);
-            }
+            };
 
             // Object functions
 
@@ -151,6 +136,7 @@
             function addBeaconFromBlender() {
                 BABYLON.SceneLoader.ImportMesh("", "./models/", "beacon.babylon", scene, function (newMeshes) {
 
+                    console.log("testing"); // testing
                     // make new mesh display in front of ground
                     newMeshes[0].renderingGroupId = 1;
                     newMeshes[1].renderingGroupId = 2;
@@ -172,25 +158,31 @@
             };
 
             function addProbeFromBlender() {
-                BABYLON.SceneLoader.ImportMesh("", "./models/", "probe.babylon", scene, function (newMeshes) {
+                BABYLON.SceneLoader.ImportMesh("", "./models/", "probe.babylon", scene, function (mesh) {
 
-                    // make new mesh display in front of ground
-                    
-
-                    // transforming beacon mesh
-                    newMeshes[0].scaling = new BABYLON.Vector3(0.1, 0.1, 0.1);
-                    newMeshes[0].parent = camera;
-                    // console.log(newMeshes); // testing
-                    newMeshes[0].rotation.z = Math.PI / 2
-                    newMeshes[0].rotation.y = -Math.PI / 2;
-                    newMeshes[0].position.x = -0.5;
-                    newMeshes[0].position.y = -0.5;
-                    newMeshes[0].position.z = 1.5;
-                    // requires beaconNumbers to be defined
-                    beaconNumbers.linkWithMesh(newMeshes[1]);
-
+                    // transforming probe mesh
+                    // mesh[0].scaling = new BABYLON.Vector3(0.1, 0.1, 0.1);
+                    var probeMaterial = new BABYLON.StandardMaterial("probeMaterial");
+                    probeMaterial.diffuseTexture = new BABYLON.Texture("./textures/amiga.jpg", scene);
+                    probeMaterial.backFaceCulling = false;
+                    mesh[0].position = noisyTarget;
+                    mesh[0].material = probeMaterial;
                 });
-            }
+            };
+
+            function probeGUI() {
+                advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+                probeInstructions = new BABYLON.GUI.TextBlock();
+                probeInstructions.fontFamily = 'Digital';
+                probeInstructions.fontStyle = 'bold';
+                probeInstructions.color = "green";
+                probeInstructions.fontSize = 40;
+                probeInstructions.left = "-32%";
+                probeInstructions.top = "-45%";
+                // update the text
+                probeInstructions.text = "click to toggle pan\npress p to probe";
+                advancedTexture.addControl(probeInstructions);
+            };
 
             // Determine location of victim
             function victimPosition() {
@@ -202,14 +194,11 @@
                 hit = scene.pickWithRay(ray, (mesh) => {
                     return (mesh === ground);
                 });
-                // console.log(hit); // testing
                 if (hit.hit) {
-                    // console.log(hit); // testing
-                    // console.log(hit.pickedPoint); // testing
                     victim = hit.pickedPoint; // to be able to access victim outside of the function
                     return hit.pickedPoint;
                 } else {
-                    return "goofed";
+                    return null;
                 };
             };
 
@@ -220,22 +209,79 @@
                     // console.log("here 1"); // testing
 
                     if (closeToVictim(distanceToVictim)) {
-                        // console.log("here 3"); // testing
-                        // console.log(newMeshes);
                         advancedTexture.dispose();
                         // deleting beacon
                         scene.getMeshByName("Cube")?.dispose();
                         scene.getMeshByName("Plane")?.dispose();
                         scene.getMeshByName("Sphere")?.dispose();
+                        console.log(scene.getMeshByName("Cube"));
+
                         distanceToVictim = 100; // cause the onRenderBeforeObservable conditional to stop running.
                         setupArcRotateCamera(victim);
+                        addProbeFromBlender();
+                        probeGUI();
+                        clicked = false; // user has not clicked on canvas when probing yet
+                        scene.onPointerObservable.add((pointerInfo) => {
+                            switch (pointerInfo.type) {
+                                case BABYLON.PointerEventTypes.POINTERDOWN:
+                                    // clicked is true if user has already clicked in probing context
+                                    if (clicked) {
+                                        console.log("hi"); // testing
+                                        detachProbe();
+                                    } else {
+                                        prepareProbe();
+                                        console.log("hi1"); // testing
+                                    };
+                                    break;
+                                case BABYLON.PointerEventTypes.POINTERMOVE:
+                                    if (clicked) {
+                                        attachProbe();
+                                        console.log("hi2"); // testing
+                                    };
+                                    break;
+                            };
+                        });
                     };
                 });
             };
 
+            // purely testing
+            function testFunction() {
+                camera.position = victim;
+            };
+
             // generate a random invisible box near victimPosition for probing
             function makeVictimMesh() {
+                victimMesh = BABYLON.MeshBuilder.CreateBox("victimMesh");
+                victimMesh.position = victim;
+                var victimMaterial = new BABYLON.StandardMaterial("victimMaterial");
+                victimMaterial.alpha = 0;
+                victimMesh.material = victimMaterial;
+            };
 
+            // gets position on ground (borrowed from BJS Drag Demo)
+            function getGroundPosition() {
+                var pickinfo = scene.pick(scene.pointerX, scene.pointerY, function (mesh) { return mesh == ground; });
+                if (pickinfo.hit) {
+                    return pickinfo.pickedPoint;
+                }
+
+                return noisyTarget;
+            };
+
+            // prepares probe to attach to cursor
+            function prepareProbe() {
+                arcRotateCamera.detachControl();
+                clicked = true;
+            };
+
+            function attachProbe() {
+                scene.getMeshByName("Cylinder").position = getGroundPosition();
+            }
+
+            function detachProbe() {
+                arcRotateCamera.attachControl(canvas, true);
+                clicked = false;
             };
 
             // Other functions (calculations, etc.)
@@ -277,8 +323,8 @@
                 addBeaconFromBlender(); // adding this here so I can attach gui to beacon
                 scene.onBeforeRenderObservable.add(function () {
                     if (closeToVictim(distanceToVictim)) {
-                        console.log("here"); // testing
                         cameraTransition();
+                        testFunction();
                     };
                 });
             });

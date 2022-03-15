@@ -141,28 +141,35 @@
                     });
                 }
             }
+
+            function addProbeFromBlender() {
+                BABYLON.SceneLoader.ImportMesh("", "./models/", "probe.babylon", scene, function (mesh) {
+
+                    // transforming probe mesh
+                    mesh[0].scaling = new BABYLON.Vector3(0.25, 0.2, 0.25);
+                    // newMeshes[0].parent = camera;
+                    // console.log(newMeshes); // testing
+                    // newMeshes[0].rotation.z = Math.PI / 2
+                    // newMeshes[0].rotation.y = -Math.PI / 2;
+                    // newMeshes[0].position.x = -0.5;
+                    // newMeshes[0].position.y = -0.5;
+                    // newMeshes[0].position.z = 1.5;
+                    console.log("done");
+                    mesh[0].position = new BABYLON.Vector3(0, 0, 0);
+                });
+            };
+
             setupScene();
             setupCamera();
             setupLights();
             showAxis(5);
             addPilot();
+            addProbeFromBlender();
             pilot.position = new BABYLON.Vector3(0, 0, 0);
             let ground = BABYLON.MeshBuilder.CreateGround("Ground", { width: 100, height: 100 });
             ground.isPickable = true;
 
-            function mousemovef() {
-                var hit;
-                BABYLON.Tools.DelayAsync(1000).then(() => {
-                    var ray = new BABYLON.Ray(new BABYLON.Vector3(0, 5, 0), new BABYLON.Vector3(0, -1, 0), 10);
-                    console.log("here");
-                    console.log(ray);
-                    hit = scene.pickWithRay(ray);
-                    console.log(hit);
-                });
-            }
-
             // scene.onPointerMove = function () {
-            mousemovef();
             // };
             // pilot.rotation = new BABYLON.Vector3(0 / 180 * Math.PI, 0 / 180 * Math.PI, 0 / 180 * Math.PI);
             // pilot.addRotation(0 / 180 * Math.PI, 0 / 180 * Math.PI, 0 / 180 * Math.PI);
