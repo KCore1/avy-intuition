@@ -72,8 +72,8 @@
             // target must be Vector3
             function setupArcRotateCamera(target) {
                 // make smooth transition
-                noisyTarget = new BABYLON.Vector3(target.x + randomNumber(-5, 5), target.y + randomNumber(-5, 5), target.z);
-                arcRotateCamera = new BABYLON.ArcRotateCamera("arcCamera", 0, 0, 20, noisyTarget, scene);
+                noisyTarget = new BABYLON.Vector3(target.x + randomNumber(-10, 10), target.y + randomNumber(-10, 10), target.z);
+                arcRotateCamera = new BABYLON.ArcRotateCamera("arcCamera", 0, 0, 12, noisyTarget, scene);
                 arcRotateCamera.fov = 1.2;
                 arcRotateCamera.upperBetaLimit = (Math.PI / 2) * 0.99;
                 camera.detachControl();
@@ -161,11 +161,12 @@
                 BABYLON.SceneLoader.ImportMesh("", "./models/", "probe.babylon", scene, function (mesh) {
 
                     // transforming probe mesh
-                    // mesh[0].scaling = new BABYLON.Vector3(0.1, 0.1, 0.1);
+                    mesh[0].scaling = new BABYLON.Vector3(1, 0.4, 1);
                     var probeMaterial = new BABYLON.StandardMaterial("probeMaterial");
                     probeMaterial.diffuseTexture = new BABYLON.Texture("./textures/amiga.jpg", scene);
                     probeMaterial.backFaceCulling = false;
                     mesh[0].position = noisyTarget;
+                    mesh[0].position.y += 20;
                     mesh[0].material = probeMaterial;
                 });
             };
@@ -219,6 +220,7 @@
                         distanceToVictim = 100; // cause the onRenderBeforeObservable conditional to stop running.
                         setupArcRotateCamera(victim);
                         addProbeFromBlender();
+                        makeVictimMesh();
                         probeGUI();
                         clicked = false; // user has not clicked on canvas when probing yet
                         scene.onPointerObservable.add((pointerInfo) => {
@@ -241,6 +243,7 @@
                                     break;
                             };
                         });
+                        moveProbe();
                     };
                 });
             };
@@ -252,11 +255,12 @@
 
             // generate a random invisible box near victimPosition for probing
             function makeVictimMesh() {
-                victimMesh = BABYLON.MeshBuilder.CreateBox("victimMesh");
+                victimMesh = BABYLON.MeshBuilder.CreateBox("victimMesh", { size: 3 });
                 victimMesh.position = victim;
                 var victimMaterial = new BABYLON.StandardMaterial("victimMaterial");
-                victimMaterial.alpha = 0;
+                // victimMaterial.alpha = 0;
                 victimMesh.material = victimMaterial;
+                victimMesh.checkCollisions = true;
             };
 
             // gets position on ground (borrowed from BJS Drag Demo)
@@ -275,13 +279,71 @@
                 clicked = true;
             };
 
+            // attaches probe to cursor
             function attachProbe() {
-                scene.getMeshByName("Cylinder").position = getGroundPosition();
+                var modifiedGroundPosition = getGroundPosition();
+                modifiedGroundPosition.y += 20;
+                scene.getMeshByName("Cylinder").position = modifiedGroundPosition;
             }
 
+            // detaches probe from cursor
             function detachProbe() {
                 arcRotateCamera.attachControl(canvas, true);
                 clicked = false;
+            };
+
+            // makes probing action
+            function moveProbe() {
+                scene.registerAfterRender(function () {
+                    if (scene.getMeshByName("Cylinder")) {
+                        // using imprecise for now
+                        
+                        if (scene.getMeshByName("Cylinder").intersectsMesh(victimMesh, false)) {
+                            console.log("INTERSECTING VICTIM"); // testing
+                        };
+
+                        // detect if probe is in animation
+                        if (scene.getMeshByName("Cylinder").position.y = (getGroundPosition().y + 5)) {
+                            
+                        };
+                    };
+                });
+                scene.onKeyboardObservable.add((kbInfo) => {
+                    if ((kbInfo.type == BABYLON.KeyboardEventTypes.KEYDOWN) && (kbInfo.event.key == "p" || kbInfo.event.key == "P")) {
+                        animateProbe();
+                    };
+                });
+            };
+
+            // contains actual probe animation
+            function animateProbe() {
+                let frameRate = 10;
+                let moveY = new BABYLON.Animation("moveY", "position.y", frameRate, BABYLON.Animation.ANIMATIONTYPE_FLOAT, BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT);
+
+                var keyFrames = [];
+
+                var originalPosition = scene.getMeshByName("Cylinder").position.y
+
+                keyFrames.push({
+                    frame: 0,
+                    value: originalPosition
+                });
+
+                keyFrames.push({
+                    frame: frameRate,
+                    value: originalPosition - 20
+                });
+
+                keyFrames.push({
+                    frame: 2 * frameRate,
+                    value: originalPosition
+                });
+
+                moveY.setKeys(keyFrames);
+
+                scene.getMeshByName("Cylinder").animations.push(moveY);
+
+                scene.beginAnimation(scene.getMeshByName("Cylinder"), 0, 2 * frameRate, false);
             };
 
             // Other functions (calculations, etc.)
