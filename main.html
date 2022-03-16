@@ -51,7 +51,7 @@
             function setupUniversalCamera() {
                 camera = new BABYLON.UniversalCamera(
                     "Camera",
-                    new BABYLON.Vector3(-50, 500, 0),   // position
+                    new BABYLON.Vector3(-50, 415, 0),   // position
                     scene
                 );
                 camera.fov = 1.2;
@@ -62,7 +62,7 @@
                 camera.keysRight = [68]; // D
                 camera.speed = 3;
                 camera.attachControl(canvas, true);
-                camera._needMoveForGravity = true;
+                camera.needMoveForGravity = true;
                 camera.ellipsoid = new BABYLON.Vector3(0.05, 1, 0.05);
                 camera.applyGravity = true;
                 camera.checkCollisions = true;
@@ -72,7 +72,7 @@
             // target must be Vector3
             function setupArcRotateCamera(target) {
                 // make smooth transition
-                noisyTarget = new BABYLON.Vector3(target.x + randomNumber(-10, 10), target.y, target.z + randomNumber(-10, 10));
+                noisyTarget = new BABYLON.Vector3(target.x + randomNumber(-15, 15), target.y, target.z + randomNumber(-15, 15));
                 arcRotateCamera = new BABYLON.ArcRotateCamera("arcCamera", 0, 0, 12, noisyTarget, scene);
                 arcRotateCamera.fov = 1.2;
                 arcRotateCamera.upperBetaLimit = (Math.PI / 2) * 0.99;
@@ -217,6 +217,7 @@
                 BABYLON.Tools.DelayAsync(100).then(() => { // some weird redundancy here with closeToVictim due to loading not all happening
 
                     if (closeToVictim(distanceToVictim)) {
+                        
                         advancedTexture.dispose();
                         // deleting beacon
                         scene.getMeshByName("Cube")?.dispose();
@@ -258,7 +259,7 @@
 
             // generate a random invisible box near victimPosition for probing
             function makeVictimMesh() {
-                victimMesh = BABYLON.MeshBuilder.CreateBox("victimMesh", { size: 3 });
+                victimMesh = BABYLON.MeshBuilder.CreateBox("victimMesh", { size: 10 });
                 victimMesh.position = victim;
                 var victimMaterial = new BABYLON.StandardMaterial("victimMaterial");
                 victimMaterial.alpha = 0; // testing: makes victim visible
@@ -449,7 +450,7 @@
                 scene.onBeforeRenderObservable.add(function () {
                     if (closeToVictim(distanceToVictim)) {
                         cameraTransition();
-                        // testFunction(); // to automatically position over victim testing
+                        testFunction(); // to automatically position over victim testing
                     };
                     // using need bools to determine whether to play or not
                     if (distanceToVictim < 200 && needMedium) {
@@ -467,9 +468,6 @@
                         barryvoxClose.stop();
                         barryvoxScanning.play();
                         needScanning = false;
-                    } else if (distanceToVictim < 10) {
-                        console.log("here3");
-                        barryvoxScanning.stop();
                     };
                 });
             });
