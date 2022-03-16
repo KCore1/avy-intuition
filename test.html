@@ -28,6 +28,18 @@
         /******* Add the create scene function ******/
         function createScene() {
             let scene, camera, light, pilot;
+            let soundsReady = 0;
+            function soundReady() {
+                soundsReady++;
+                console.log(soundsReady)
+                if (soundsReady == 5) {
+                    // barryvoxFar.play();
+                    barryvoxClose.play();
+                    barryvoxMedium.play();
+                    barryvoxScanning.play();
+                }
+            };
+
             function setupScene() {
                 scene = new BABYLON.Scene(engine);
                 scene.clearColor = new BABYLON.Color3(.5, .5, .5);
@@ -197,7 +209,8 @@
 
                     // };
                     if (scene.getMeshByName("Cylinder").position.y < 5) {
-                        console.log("hey");
+                        particle();
+                        barryvoxFar.play();
                     };
                 });
                 scene.onKeyboardObservable.add((kbInfo) => {
@@ -207,13 +220,64 @@
                 });
             };
 
+            function particle() {
+                var emitter = BABYLON.MeshBuilder.CreateBox("emitter", { size: 0.01 }, scene);
+                var particles = new BABYLON.ParticleSystem("sparks", 1000, scene);
+                particles.emitter = emitter;
+                particles.minEmitBox = new BABYLON.Vector3(0, 0, 0);
+                particles.maxEmitBox = new BABYLON.Vector3(0, 0, 0);
+                particles.particleTexture = new BABYLON.Texture("./textures/snow.png"); // from the babylon.js demo
+                particles.minEmitPower = 1;
+                particles.maxEmitPower = 4;
+                particles.emitRate = 1500;
+
+                particles.color1 = new BABYLON.Color4(1, 1, 1, 1.0);
+                particles.color2 = new BABYLON.Color4(1, 1, 1, 0.4);
+                particles.colorDead = new BABYLON.Color4(0.4, 0.4, 0.4, 0.2);
+
+                particles.minSize = 0.01;
+                particles.maxSize = 0.1;
+                particles.minLifeTime = 0.1;
+                particles.maxLifeTime = 0.2;
+                particles.direction1 = new BABYLON.Vector3(1, 0.5, 1);
+                particles.direction2 = new BABYLON.Vector3(-1, 1, -1);
+                // particles.minAngularSpeed = 0;
+                // particles.maxAngularSpeed = 0.5;
+                particles.targetStopDuration = 0.1;
+
+                particles.start();
+
+            };
+
             setupScene();
             setupCamera();
             setupLights();
             showAxis(5);
             addPilot();
             addProbeFromBlender();
-            
+
+            // sounds
+            var barryvoxOn = new BABYLON.Sound("barryvoxOn", "./sounds/BarryvoxOn.wav", scene, soundReady, {
+                loop: false,
+                autoplay: true
+            });
+            var barryvoxFar = new BABYLON.Sound("barryvoxFar", "./sounds/BarryvoxFar.wav", scene, soundReady, {
+                loop: true,
+                autoplay: false
+            });
+            var barryvoxMedium = new BABYLON.Sound("barryvoxMedium", "./sounds/BarryvoxMedium.wav", scene, soundReady, {
+                loop: true,
+                autoplay: false
+            });
+            var barryvoxClose = new BABYLON.Sound("barryvoxClose", "./sounds/BarryvoxClose.wav", scene, soundReady, {
+                loop: true,
+                autoplay: false
+            });
+            var barryvoxScanning = new BABYLON.Sound("barryvoxScanning", "./sounds/BarryvoxScanning.wav", scene, soundReady, {
+                loop: true,
+                autoplay: false
+            });
+
             pilot.position = new BABYLON.Vector3(0, 0, 0);
             let ground = BABYLON.MeshBuilder.CreateGround("Ground", { width: 100, height: 100 });
             ground.isPickable = true;

@@ -72,7 +72,7 @@
             // target must be Vector3
             function setupArcRotateCamera(target) {
                 // make smooth transition
-                noisyTarget = new BABYLON.Vector3(target.x + randomNumber(-10, 10), target.y + randomNumber(-10, 10), target.z);
+                noisyTarget = new BABYLON.Vector3(target.x + randomNumber(-10, 10), target.y, target.z + randomNumber(-10, 10));
                 arcRotateCamera = new BABYLON.ArcRotateCamera("arcCamera", 0, 0, 12, noisyTarget, scene);
                 arcRotateCamera.fov = 1.2;
                 arcRotateCamera.upperBetaLimit = (Math.PI / 2) * 0.99;
@@ -136,7 +136,6 @@
             function addBeaconFromBlender() {
                 BABYLON.SceneLoader.ImportMesh("", "./models/", "beacon.babylon", scene, function (newMeshes) {
 
-                    console.log("testing"); // testing
                     // make new mesh display in front of ground
                     newMeshes[0].renderingGroupId = 1;
                     newMeshes[1].renderingGroupId = 2;
@@ -145,7 +144,6 @@
                     // transforming beacon mesh
                     newMeshes[0].scaling = new BABYLON.Vector3(0.1, 0.1, 0.1);
                     newMeshes[0].parent = camera;
-                    // console.log(newMeshes); // testing
                     newMeshes[0].rotation.z = Math.PI / 2
                     newMeshes[0].rotation.y = -Math.PI / 2;
                     newMeshes[0].position.x = -0.5;
@@ -173,17 +171,27 @@
 
             function probeGUI() {
                 advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
-                probeInstructions = new BABYLON.GUI.TextBlock();
+                let probeInstructions = new BABYLON.GUI.TextBlock();
                 probeInstructions.fontFamily = 'Digital';
                 probeInstructions.fontStyle = 'bold';
                 probeInstructions.color = "green";
                 probeInstructions.fontSize = 40;
                 probeInstructions.left = "-32%";
                 probeInstructions.top = "-45%";
-                // update the text
                 probeInstructions.text = "click to toggle pan\npress p to probe";
                 advancedTexture.addControl(probeInstructions);
             };
+
+            function winGUI() {
+                advancedTexture = BABYLON.GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
+                let winText = new BABYLON.GUI.TextBlock();
+                winText.fontFamily = 'Digital';
+                winText.fontStyle = 'bold';
+                winText.color = "blue";
+                winText.fontSize = 250;
+                winText.text = "victim\nfound";
+                advancedTexture.addControl(winText);
+            }
 
             // Determine location of victim
             function victimPosition() {
@@ -207,7 +215,6 @@
             function cameraTransition() {
                 // need to delay or will transition camera immediately as the ray for victim has not been cast
                 BABYLON.Tools.DelayAsync(100).then(() => { // some weird redundancy here with closeToVictim due to loading not all happening
-                    // console.log("here 1"); // testing
 
                     if (closeToVictim(distanceToVictim)) {
                         advancedTexture.dispose();
@@ -215,7 +222,6 @@
                         scene.getMeshByName("Cube")?.dispose();
                         scene.getMeshByName("Plane")?.dispose();
                         scene.getMeshByName("Sphere")?.dispose();
-                        console.log(scene.getMeshByName("Cube"));
 
                         distanceToVictim = 100; // cause the onRenderBeforeObservable conditional to stop running.
                         setupArcRotateCamera(victim);
@@ -228,17 +234,14 @@
                                 case BABYLON.PointerEventTypes.POINTERDOWN:
                                     // clicked is true if user has already clicked in probing context
                                     if (clicked) {
-                                        console.log("hi"); // testing
                                         detachProbe();
                                     } else {
                                         prepareProbe();
-                                        console.log("hi1"); // testing
                                     };
                                     break;
                                 case BABYLON.PointerEventTypes.POINTERMOVE:
                                     if (clicked) {
                                         attachProbe();
-                                        console.log("hi2"); // testing
                                     };
                                     break;
                             };
@@ -258,7 +261,7 @@
                 victimMesh = BABYLON.MeshBuilder.CreateBox("victimMesh", { size: 3 });
                 victimMesh.position = victim;
                 var victimMaterial = new BABYLON.StandardMaterial("victimMaterial");
-                // victimMaterial.alpha = 0;
+                victimMaterial.alpha = 0; // testing: makes victim visible
                 victimMesh.material = victimMaterial;
                 victimMesh.checkCollisions = true;
             };
@@ -297,14 +300,17 @@
                 scene.registerAfterRender(function () {
                     if (scene.getMeshByName("Cylinder")) {
                         // using imprecise for now
-                        
+
                         if (scene.getMeshByName("Cylinder").intersectsMesh(victimMesh, false)) {
-                            console.log("INTERSECTING VICTIM"); // testing
+                            advancedTexture.dispose();
+                            winGUI();
                         };
 
-                        // detect if probe is in animation
-                        if (scene.getMeshByName("Cylinder").position.y = (getGroundPosition().y + 5)) {
-                            
+                        // detect if probe is in animation, and adds snow particles onto probe
+                        if (scene.getMeshByName("Cylinder").position.y < (getGroundPosition().y + 5)) {
+                            let particleLocation = scene.getMeshByName("Cylinder").position;
+                            particleLocation.y -= 20;
+                            snowParticles(particleLocation);
                         };
                     };
                 });
@@ -346,6 +352,36 @@
                 scene.beginAnimation(scene.getMeshByName("Cylinder"), 0, 2 * frameRate, false);
             };
 
+            function snowParticles(position) {
+                var emitter = BABYLON.MeshBuilder.CreateBox("emitter", { size: 0.01 }, scene);
+                emitter.position = position;
+                var particles = new BABYLON.ParticleSystem("sparks", 1000, scene);
+                particles.emitter = emitter;
+                particles.minEmitBox = new BABYLON.Vector3(0, 0, 0);
+                particles.maxEmitBox = new BABYLON.Vector3(0, 0, 0);
+                particles.particleTexture = new BABYLON.Texture("./textures/snow.png"); // from the babylon.js demo
+                particles.minEmitPower = 1;
+                particles.maxEmitPower = 4;
+                particles.emitRate = 1500;
+
+                particles.color1 = new BABYLON.Color4(1, 1, 1, 1.0);
+                particles.color2 = new BABYLON.Color4(1, 1, 1, 0.4);
+                particles.colorDead = new BABYLON.Color4(0.4, 0.4, 0.4, 0.2);
+
+                particles.minSize = 0.01;
+                particles.maxSize = 0.1;
+                particles.minLifeTime = 0.1;
+                particles.maxLifeTime = 0.2;
+                particles.direction1 = new BABYLON.Vector3(1, 0.5, 1);
+                particles.direction2 = new BABYLON.Vector3(-1, 1, -1);
+                // particles.minAngularSpeed = 0;
+                // particles.maxAngularSpeed = 0.5;
+                particles.targetStopDuration = 0.1;
+
+                particles.start();
+
+            };
+
             // Other functions (calculations, etc.)
 
             // returns absolute distance given that x y z are numbers
@@ -380,13 +416,60 @@
 
             scene.executeWhenReady(function () {
                 var vector = victimPosition();
-                // console.log(vector); // testing
                 setupGUI(vector);
                 addBeaconFromBlender(); // adding this here so I can attach gui to beacon
+
+                // sounds
+                var barryvoxOn = new BABYLON.Sound("barryvoxOn", "./sounds/BarryvoxOn.wav", scene, null, {
+                    loop: false,
+                    autoplay: true
+                });
+                var barryvoxFar = new BABYLON.Sound("barryvoxFar", "./sounds/BarryvoxFar.wav", scene, null, {
+                    loop: true,
+                    autoplay: true
+                });
+                var barryvoxMedium = new BABYLON.Sound("barryvoxMedium", "./sounds/BarryvoxMedium.wav", scene, null, {
+                    loop: true,
+                    autoplay: false
+                });
+                var barryvoxClose = new BABYLON.Sound("barryvoxClose", "./sounds/BarryvoxClose.wav", scene, null, {
+                    loop: true,
+                    autoplay: false
+                });
+                var barryvoxScanning = new BABYLON.Sound("barryvoxScanning", "./sounds/BarryvoxScanning.wav", scene, null, {
+                    loop: true,
+                    autoplay: false
+                });
+
+                // very boring and long solution to playing a bunch of sounds
+                let needMedium = true;
+                let needClose = true;
+                let needScanning = true;
+
                 scene.onBeforeRenderObservable.add(function () {
                     if (closeToVictim(distanceToVictim)) {
                         cameraTransition();
-                        testFunction();
+                        // testFunction(); // to automatically position over victim testing
+                    };
+                    // using need bools to determine whether to play or not
+                    if (distanceToVictim < 200 && needMedium) {
+                        console.log("here");
+                        barryvoxFar.stop();
+                        barryvoxMedium.play();
+                        needMedium = false;
+                    } else if (distanceToVictim < 100 && needClose) {
+                        console.log("here1");
+                        barryvoxMedium.stop();
+                        barryvoxClose.play();
+                        needClose = false;
+                    } else if (distanceToVictim < 30 && needScanning) {
+                        console.log("here2");
+                        barryvoxClose.stop();
+                        barryvoxScanning.play();
+                        needScanning = false;
+                    } else if (distanceToVictim < 10) {
+                        console.log("here3");
+                        barryvoxScanning.stop();
                     };
                 });
             });
